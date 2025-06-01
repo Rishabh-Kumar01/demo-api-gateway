@@ -56,10 +56,14 @@ const services = [
   {
     route: serverConfig.AUTH_SERVICE_PATH,
     target: serverConfig.AUTH_SERVICE_URL,
+    rewriteFrom: "^/authservice",
+    rewriteTo: "",
   },
   {
     route: serverConfig.USER_SERVICE_PATH,
     target: serverConfig.USER_SERVICE_URL,
+    rewriteFrom: "^/userservie",
+    rewriteTo: "",
   },
 ];
 
@@ -70,6 +74,9 @@ services.forEach(({ route, target }) => {
     createProxyMiddleware({
       target,
       changeOrigin: true,
+      pathRewrite: {
+        [rewriteFrom]: rewriteTo,
+      },
       onProxyReq: fixRequestBody,
       onError: (err, req, res) => {
         console.error(`Proxy error: ${err.message}`);
