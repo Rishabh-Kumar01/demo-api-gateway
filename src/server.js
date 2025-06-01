@@ -3,7 +3,7 @@ import cors from "cors";
 import helmet from "helmet";
 import morgan from "morgan";
 import compression from "compression";
-import { createProxyMiddleware } from "http-proxy-middleware";
+import { createProxyMiddleware, fixRequestBody } from "http-proxy-middleware";
 import { serverConfig } from "./config/serverConfig.js";
 import { errorHandler } from "./middleware/errorHandler.js";
 import { rateLimiter } from "./middleware/rateLimiter.js";
@@ -70,6 +70,7 @@ services.forEach(({ route, target }) => {
     createProxyMiddleware({
       target,
       changeOrigin: true,
+      onProxyReq: fixRequestBody,
       onError: (err, req, res) => {
         console.error(`Proxy error: ${err.message}`);
         res.status(503).json({
