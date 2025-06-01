@@ -1,60 +1,68 @@
 name: CI/CD Docker Image to Docker Hub
 
-# Controls when the workflow will run
 on:
   push:
-    branches: [ "main" ] # Runs on pushes to the main branch
+    branches:
+      - main
+      - staging # Trigger on pushes to main or staging
   pull_request:
-    branches: [ "main" ] # Runs on pull requests targeting the main branch (for build testing)
+    branches:
+      - main
+      - staging # Trigger on PRs to main or staging
 
 jobs:
-  build_and_push_docker_image:
-    name: Build and Push Docker Image
-    runs-on: ubuntu-latest # Specifies the runner environment
-
+  build_and_push_staging:
+    name: Build and Push Staging Docker Image
+    if: github.ref == 'refs/heads/staging' && github.event_name == 'push' # Only run on push to staging branch
+    runs-on: ubuntu-latest
+    environment: staging # Use the 'staging' GitHub Environment (for potential secrets or rules)
     steps:
-      # 1. Checkout Code
-      # This step checks out your repository under $GITHUB_WORKSPACE, so your workflow can access it.
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # 2. Set up Docker Buildx
-      # Buildx is a Docker CLI plugin that extends the docker build command with the full support
-      # of the features provided by Moby BuildKit builder toolkit. It allows for building multi-platform images.
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      # 3. Login to Docker Hub
-      # This step logs into Docker Hub using the secrets you configured.
-      # It's essential for pushing images to your Docker Hub repository.
       - name: Login to Docker Hub
         uses: docker/login-action@v3
         with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          username: ${{ secrets.DOCKERHUB_USERNAME }} # Assumes DOCKERHUB_USERNAME is a repo or staging env secret
+          password: ${{ secrets.DOCKERHUB_TOKEN }}   # Assumes DOCKERHUB_TOKEN is a repo or staging env secret
 
-      # 4. Build and Push Docker Image
-      # This step builds your Docker image using the Dockerfile in your repository
-      # and pushes it to Docker Hub.
-      # - `context: .` tells Docker to use the current directory as the build context.
-      # - `file: ./Dockerfile` specifies the path to your Dockerfile.
-      # - `push: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}`
-      #   This condition ensures the image is only pushed if the event is a 'push'
-      #   AND the push is to the 'main' branch. For pull requests, it will build but not push.
-      # - `tags:` defines how the image will be tagged.
-      #   - `yourusername/api-gateway:latest`: A common tag for the most recent version.
-      #     Replace 'yourusername' with your actual Docker Hub username.
-      #   - `yourusername/api-gateway:${{ github.sha }}`: Tags the image with the Git commit SHA,
-      #     providing a unique identifier for each build.
-      - name: Build and push Docker image
+      - name: Build and push Staging image
         uses: docker/build-push-action@v5
         with:
           context: .
-          file: ./Dockerfile
-          push: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+          file: ./Dockerfile.staging # Use the staging Dockerfile
+          push: true
+          tags: |
+            ${{ secrets.DOCKERHUB_USERNAME }}/api-gateway:staging-latest
+            ${{ secrets.DOCKERHUB_USERNAME }}/api-gateway:staging-${{ github.sha }}
+
+  build_and_push_production:
+    name: Build and Push Production Docker Image
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push' # Only run on push to main branch
+    runs-on: ubuntu-latest
+    environment: production # Use the 'production' GitHub Environment
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }} # Assumes DOCKERHUB_USERNAME is a repo or production env secret
+          password: ${{ secrets.DOCKERHUB_TOKEN }}   # Assumes DOCKERHUB_TOKEN is a repo or production env secret
+
+      - name: Build and push Production image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile.production # Use the production Dockerfile
+          push: true
           tags: |
             ${{ secrets.DOCKERHUB_USERNAME }}/api-gateway:latest
             ${{ secrets.DOCKERHUB_USERNAME }}/api-gateway:${{ github.sha }}
-          # Optional: Add build arguments if your Dockerfile needs them
-          # build-args: |
-          #   ARG_NAME=value
