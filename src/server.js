@@ -1,13 +1,13 @@
-import express from 'express';
-import cors from 'cors';
-import helmet from 'helmet';
-import morgan from 'morgan';
-import compression from 'compression';
-import { createProxyMiddleware } from 'http-proxy-middleware';
-import { serverConfig } from './config/serverConfig.js';
-import { errorHandler } from './middleware/errorHandler.js';
-import { rateLimiter } from './middleware/rateLimiter.js';
-import routes from './routes/index.js';
+import express from "express";
+import cors from "cors";
+import helmet from "helmet";
+import morgan from "morgan";
+import compression from "compression";
+import { createProxyMiddleware } from "http-proxy-middleware";
+import { serverConfig } from "./config/serverConfig.js";
+import { errorHandler } from "./middleware/errorHandler.js";
+import { rateLimiter } from "./middleware/rateLimiter.js";
+import routes from "./routes/index.js";
 
 const app = express();
 
@@ -15,35 +15,41 @@ const app = express();
 app.use(helmet());
 app.use(cors());
 app.use(compression());
-app.use(morgan('dev'));
+app.use(morgan("dev"));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Rate limiting
-app.use('/api/', rateLimiter);
+app.use("/api/", rateLimiter);
 
 // Health check endpoint
-app.get('/health', (req, res) => {
-  res.json({ status: 'OK', service: 'API Gateway' });
+app.get("/health", (req, res) => {
+  res.json({ status: "OK", service: "API Gateway" });
 });
 
-// Health check endpoints for other services
-app.get('/health/auth', createProxyMiddleware({
-  target: serverConfig.AUTH_SERVICE_URL,
-  changeOrigin: true,
-  pathRewrite: {
-    '^/health/auth': '/health',
-  },
-}));
+// Health check endpoints for auth service
+app.get(
+  "/health/auth",
+  createProxyMiddleware({
+    target: serverConfig.AUTH_SERVICE_URL,
+    changeOrigin: true,
+    pathRewrite: {
+      "^/health/auth": "/health",
+    },
+  })
+);
 
-app.get('/health/user', createProxyMiddleware({
-  target: serverConfig.USER_SERVICE_URL,
-  changeOrigin: true,
-  pathRewrite: {
-    '^/health/user': '/health',
-  },
-}));
-
+// Health check endpoints for usre service
+app.get(
+  "/health/user",
+  createProxyMiddleware({
+    target: serverConfig.USER_SERVICE_URL,
+    changeOrigin: true,
+    pathRewrite: {
+      "^/health/user": "/health",
+    },
+  })
+);
 
 // Proxy configuration for services
 const services = [
@@ -66,9 +72,9 @@ services.forEach(({ route, target }) => {
       changeOrigin: true,
       onError: (err, req, res) => {
         console.error(`Proxy error: ${err.message}`);
-        res.status(503).json({ 
-          error: 'Service Unavailable',
-          message: 'The requested service is currently unavailable'
+        res.status(503).json({
+          error: "Service Unavailable",
+          message: "The requested service is currently unavailable",
         });
       },
     })
@@ -76,7 +82,7 @@ services.forEach(({ route, target }) => {
 });
 
 // API routes
-app.use('/api', routes);
+app.use("/api", routes);
 
 // Error handling
 app.use(errorHandler);
@@ -88,7 +94,7 @@ app.listen(serverConfig.PORT, () => {
 });
 
 // Handle uncaught errors
-process.on('unhandledRejection', (err) => {
-  console.error('Unhandled Rejection:', err);
+process.on("unhandledRejection", (err) => {
+  console.error("Unhandled Rejection:", err);
   process.exit(1);
 });
