@@ -68,7 +68,7 @@ const services = [
 ];
 
 // Setup proxies
-services.forEach(({ route, target }) => {
+services.forEach(({ route, target, rewriteFrom, rewriteTo }) => {
   app.use(
     route,
     createProxyMiddleware({
